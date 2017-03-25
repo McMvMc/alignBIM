@@ -1,0 +1,73 @@
+
+<!doctype html>
+<head>
+	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+	<title>Displaying events as a cascade</title>
+</head>
+<script src="js3/dhtmlxGantt_v3.3.0/codebase/dhtmlxgantt.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" src="js3/dhtmlxGantt_v3.3.0/samples/common/testdata.js"></script>
+<script src="js3/jQuery/jquery-2.1.4.min.js"></script>
+<script src="js3/dhtmlxScheduler_v4.3.1/codebase/dhtmlxscheduler.js" type="text/javascript" charset="utf-8"></script>
+<script src="js3/dhtmlxScheduler_v4.3.1/codebase/ext/dhtmlxscheduler_serialize.js" type="text/javascript" charset="utf-8"></script>
+<link rel="stylesheet" href="js3/dhtmlxGantt_v3.3.0/codebase/dhtmlxgantt.css" type="text/css" media="screen" title="no title" charset="utf-8">
+<link rel="stylesheet" href="js3/dhtmlxScheduler_v4.3.1/codebase/dhtmlxscheduler.css" type="text/css" media="screen" title="no title" charset="utf-8">
+<style type="text/css" media="screen">
+	html, body{
+		margin:0;
+		padding:0;
+		height:100%;
+		overflow:hidden;
+	}
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	function init() {
+		// Initialize Scheduler view and load it's data
+		var schedulerTasks = [
+				{ start_date: "2014-06-30 12:00", end_date: "2014-06-30 14:00", text:"Task D-12458" },
+				{ start_date: "2014-06-30 12:30", end_date: "2014-06-30 15:00", text:"Task D-72348" },
+				{ start_date: "2014-06-30 13:30", end_date: "2014-06-30 17:00", text:"Task D-41175" },
+				{ start_date: "2014-06-30 16:30", end_date: "2014-06-30 20:00", text:"Task D-92431" },
+			]
+		scheduler.config.multi_day = true;
+		scheduler.config.xml_date="%Y-%m-%d %H:%i";
+		scheduler.config.first_hour = 8;
+		scheduler.config.limit_time_select = true;
+		scheduler.config.cascade_event_display = true; // enable rendering, default value = false
+		scheduler.config.cascade_event_count = 4; // how many events events will be displayed in cascade style (max), default value = 4
+		scheduler.config.cascade_event_margin = 30; // margin between events, default value = 30
+
+		scheduler.init('scheduler',new Date(2014,5,30),"day");
+		scheduler.parse(schedulerTasks,"json");
+
+		$.ajax({
+				url: "/scheduler-data",
+				type: 'GET',
+				success: function(data) {
+					// Initialize Gantt chart and load it's data
+					gantt.init("gantt");
+					gantt.parse(data);
+				}
+			});
+	}
+</script>
+
+<body onload="init();">
+	<!-- Code copied and pasted from dhtmlx example -->
+	<div id="gantt" style='width:100%; height:50%;'></div>
+	<div id="scheduler" class="dhx_cal_container" style='width:100%; height:50%;'>
+		<div class="dhx_cal_navline">
+			<div class="dhx_cal_prev_button">&nbsp;</div>
+			<div class="dhx_cal_next_button">&nbsp;</div>
+			<div class="dhx_cal_today_button"></div>
+			<div class="dhx_cal_date"></div>
+			<div class="dhx_cal_tab" name="day_tab" style="right:204px;"></div>
+			<div class="dhx_cal_tab" name="week_tab" style="right:140px;"></div>
+			<div class="dhx_cal_tab" name="month_tab" style="right:76px;"></div>
+		</div>
+		<div class="dhx_cal_header">
+		</div>
+		<div class="dhx_cal_data">
+		</div>
+	</div>
+</body>

@@ -1,0 +1,155 @@
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Potree Viewer</title>
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">-->
+  <link rel="stylesheet" type="text/css" href="/js3/potree/examples/css/potree.css">
+</head>
+<body>
+
+  <script src="/js3/potree/libs/three.js/build/three.js"></script>
+  <script src="/js3/potree/libs/other/stats.min.js"></script>
+  <script src="/js3/potree/libs/other/dat.gui.min.js"></script>
+  <script src="/js3/potree/libs/other/BinaryHeap.js"></script>
+
+  <script src="/js3/potree/build/js/potree.js"></script>
+  <script src="/js3/potree/examples/js/ProgressBar.js"></script>
+
+  <!-- uncomment this to debug changes to the individual js files -->
+
+  <script src="/js3/potree/src/PointCloudOctree.js"></script>
+  <script src="/js3/potree/src/PointCloudOctreeGeometry.js"></script>
+  <script src="/js3/potree/src/loader/POCLoader.js"></script>
+  <script src="/js3/potree/src/loader/BinaryLoader.js"></script>
+  <script src="/js3/potree/src/loader/LasLazLoader.js"></script>
+  <script src="/js3/potree/src/materials/PointCloudMaterial.js"></script>
+  <script src="/js3/potree/src/materials/EyeDomeLightingMaterial.js"></script>
+  <script src="/js3/potree/src/EarthControls.js"></script>
+  <script src="/js3/potree/src/OrbitControls.js"></script>
+  <script src="/js3/potree/src/FirstPersonControls.js"></script>
+  <script src="/js3/potree/src/utils/ProfileTool.js"></script>
+  <script src="/js3/potree/src/utils/MeasuringTool.js"></script>
+  <script src="/js3/potree/src/utils/TransformationTool.js"></script>
+  <script src="/js3/potree/src/utils/VolumeTool.js"></script>
+  <script src="/js3/potree/src/utils.js"></script>
+  <script src="/js3/potree/src/LRU.js"></script>
+  <script src="/js3/potree/src/TextSprite.js"></script>
+  <script src="/js3/potree/src/Features.js"></script>
+  <script src="/js3/potree/src/arena4d/PointCloudArena4D.js"></script>
+  <script src="/js3/potree/src/arena4d/PointCloudArena4DGeometry.js"></script>
+
+  <script type="text/javascript" src="/js3/jQuery/jquery-2.1.4.min.js"></script>
+  <script type="text/javascript" src="/js3/three.js/examples/js/loaders/DDSLoader.js"></script>
+  <script type="text/javascript" src="/js3/three.js/examples/js/loaders/OBJLoader.js"></script>
+  <script type="text/javascript" src="/js3/three.js/examples/js/loaders/PLYLoader.js"></script>
+  <script type="text/javascript" src="/js3/three.js/examples/js/renderers/Projector.js"></script>
+
+  <!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
+  <!-- INCLUDE SETTINGS HERE -->
+  <!--<script src="/js3/potree/libs/plasio/js/laslaz.js"></script>
+  <script src="/js3/potree/libs/plasio/vendor/bluebird.js"></script>
+  <script src="/js3/potree/build/js/laslaz.js"></script>
+  -->
+
+  <!-- HEADING -->
+  <div class="info" style="position: absolute; left: 300px; right: 300px; top: 10px; text-align: center;">
+    <a href="http://potree.org" target="_blank">potree.org</a><br>
+    Point cloud courtesy of <a href="http://www.sigeom.ch/" target="_blank">sigeom sa</a><br>
+  </div>
+
+  <!-- INFOS / STATS -->
+  <div id="lblNumVisibleNodes" class="info" style="position: absolute; left: 10px; top: 80px; width: 400px; color:white"></div>
+  <div id="lblNumVisiblePoints" class="info" style="position: absolute; left: 10px; top: 100px; width: 400px; color:white"></div>
+  <div id="lblMessage" class="info" style="position: absolute; left: 10px; bottom: 0px; width: 400px; color:white"></div>
+
+  <!-- TOOLS -->
+  <div id="tools" style="position: fixed; width: 400px; bottom: 10px; right: 10px">
+    <img src="/js3/potree/resources/icons/earth_controls_1.png" onclick="useEarthControls()" title="Earth Controls"/>
+    <img src="/js3/potree/resources/icons/fps_controls.png" onclick="useFPSControls()" title="Fly Camera"/>
+    <img src="/js3/potree/resources/icons/orbit_controls.png" onclick="useOrbitControls()" title="Orbit Controls"/>
+    <img src="/js3/potree/resources/icons/focus.png" onclick="camera.zoomTo(pointcloud)" title="focus on pointcloud"/>
+    <img src="/js3/potree/resources/icons/flip_y_z.png" onclick="flipYZ()" title="flip y and z coordinates"/>
+    <img src="/js3/potree/resources/icons/angle.png" onclick="measuringTool.startInsertion({showDistances: false, showAngles: true, showArea: false, closed: true, maxMarkers: 3})" title="angle measurements"/>
+    <img src="/js3/potree/resources/icons/distance.png" onclick="measuringTool.startInsertion({showDistances: true, showArea: false, closed: false})" title="distance measurements"/>
+    <img src="/js3/potree/resources/icons/area.png" onclick="measuringTool.startInsertion({showDistances: true, showArea: true, closed: true})" title="area measurements"/>
+    <img src="/js3/potree/resources/icons/volume.png" onclick="volumeTool.startInsertion()" title="volume measurements"/>
+    <img src="/js3/potree/resources/icons/profile.png" onclick="profileTool.startInsertion({width: pointcloud.boundingSphere.radius / 100})" title="height profiles"/>
+    <img src="/js3/potree/resources/icons/clip_volume.png" onclick="volumeTool.startInsertion({clip: true})" title="clipping volumes"/>
+  </div>
+
+  <div id="renderArea"></div>
+
+  <script>
+
+    var sceneProperties = {
+      path:			"http://5.9.65.151/mschuetz/potree/resources/pointclouds/pix4d/matterhorn/cloud.js",
+      path:			"/js3/potree/resources/pointclouds/lion_takanawa/cloud.js",
+      path:			"http://5.9.65.151/mschuetz/potree/resources/pointclouds/vermessung_zh_ch/zuerich/cloud.js",
+      path:			"http://localhost/dev/pointclouds/opentopography/CA13_SAN_SIM/selection_converted/cloud.js",
+      path:			"http://5.9.65.151/mschuetz/potree/test/cloud.js",
+      path:			"http://localhost/temp/test/cloud.js",
+      path:			"/js3/potree/resources/pointclouds/vol_total/cloud.js",
+      // path:     "assets/0_2_pc.obj",
+      cameraPosition: null,
+      cameraTarget: null,
+      sizeType: 		"Adaptive",			// options: "Fixed", "Attenuated", "Adaptive"
+      quality: 		"Squares", 	// options: "Squares", "Circles", "Interpolation", "Splats"
+      fov: 			75, 				// field of view in degree
+      material: 		"RGB", 				// options: "RGB", "Height", "Intensity", "Classification"
+      pointLimit: 	1,					// max number of points in millions
+      navigation: 	"Orbit",			// options: "Earth", "Orbit", "Flight"
+      pointSize: 		1,
+      useEDL:			false,				// eye-dome-lighting, especially usefull for point clouds without normals
+    };
+
+    THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
+
+    var manager = new THREE.LoadingManager();
+      manager.onProgress = function ( item, loaded, total ) {
+      console.log( item, loaded, total );
+    };
+    
+    // var loader = new THREE.PLYLoader();
+    // loader.load('assets/0_2_pc.ply', function (geometry) {
+    //     var object = new THREE.Mesh( geometry );
+    //     scene.add( object );
+    //     var light = new THREE.PointLight(0xEEEEEE);
+    //     var lightAmb = new THREE.AmbientLight(0x555555);
+    //     scene.add(light);
+    //     scene.add(lightAmb);
+    // } );
+
+    var loader = new THREE.OBJLoader(manager);
+    $.ajax({
+      url: "assets/0_14_bim.obj",
+      type: 'GET',
+      success: function(objData) {
+        BIM = loader.parse(objData);
+        var light = new THREE.PointLight(0xEEEEEE);
+        var lightAmb = new THREE.AmbientLight(0x555555);
+        scene.add(light);
+        scene.add(lightAmb);
+        scene.add(BIM);
+      }
+    })
+
+    // $.ajax({
+    //   url: "assets/0_2_pc.obj",
+    //   type: 'GET',
+    //   success: function(objData) {
+    //     var object2 = loader.parse(objData);
+    //     var light = new THREE.PointLight(0xEEEEEE);
+    //     var lightAmb = new THREE.AmbientLight(0x555555);
+    //     scene.add(light);
+    //     scene.add(lightAmb);
+    //     scene.add(object2);
+    //   }
+    // })
+
+  </script>
+  <script src="/js3/potree/examples/js/viewer.js"></script>
+  <!--  Adding a cube to the scene in GPS Waypoints file -->
+  <script src="/js/GPSWaypoints.js"></script>
+
+</body>
+</html>
